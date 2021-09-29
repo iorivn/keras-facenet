@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Inception-ResNet V1 model for Keras.
 # Reference
-http://arxiv.org/abs/1602.07261
+https://arxiv.org/abs/1602.07261
 https://github.com/davidsandberg/facenet/blob/master/src/models/inception_resnet_v1.py
 https://github.com/myutwo150/keras-inception-resnet-v2/blob/master/inception_resnet_v2.py
 """
@@ -19,7 +19,9 @@ from keras.layers import Input
 from keras.layers import Lambda
 from keras.layers import MaxPooling2D
 from keras.layers import add
-from keras import backend as K
+from keras import backend as k
+
+from typing import Optional
 
 
 def scaling(x, scale):
@@ -31,7 +33,7 @@ def conv2d_bn(x,
               kernel_size,
               strides=1,
               padding='same',
-              activation='relu',
+              activation: Optional[str] = 'relu',
               use_bias=False,
               name=None):
     x = Conv2D(filters,
@@ -41,7 +43,7 @@ def conv2d_bn(x,
                use_bias=use_bias,
                name=name)(x)
     if not use_bias:
-        bn_axis = 1 if K.image_data_format() == 'channels_first' else 3
+        bn_axis = 1 if k.image_data_format() == 'channels_first' else 3
         bn_name = _generate_layer_name('BatchNorm', prefix=name)
         x = BatchNormalization(axis=bn_axis, momentum=0.995, epsilon=0.001,
                                scale=False, name=bn_name)(x)
@@ -59,8 +61,8 @@ def _generate_layer_name(name, branch_idx=None, prefix=None):
     return '_'.join((prefix, 'Branch', str(branch_idx), name))
 
 
-def _inception_resnet_block(x, scale, block_type, block_idx, activation='relu'):
-    channel_axis = 1 if K.image_data_format() == 'channels_first' else 3
+def _inception_resnet_block(x, scale, block_type, block_idx, activation: Optional[str] = 'relu'):
+    channel_axis = 1 if k.image_data_format() == 'channels_first' else 3
     if block_idx is None:
         prefix = None
     else:
@@ -94,13 +96,13 @@ def _inception_resnet_block(x, scale, block_type, block_idx, activation='relu'):
 
     mixed = Concatenate(axis=channel_axis, name=name_fmt('Concatenate'))(branches)
     up = conv2d_bn(mixed,
-                   K.int_shape(x)[channel_axis],
+                   k.int_shape(x)[channel_axis],
                    1,
                    activation=None,
                    use_bias=True,
                    name=name_fmt('Conv2d_1x1'))
     up = Lambda(scaling,
-                output_shape=K.int_shape(up)[1:],
+                output_shape=k.int_shape(up)[1:],
                 arguments={'scale': scale})(up)
     x = add([x, up])
     if activation is not None:
@@ -108,10 +110,10 @@ def _inception_resnet_block(x, scale, block_type, block_idx, activation='relu'):
     return x
 
 
-def InceptionResNetV1(input_shape=(160, 160, 3),
-                      classes=128,
-                      dropout_keep_prob=0.8,
-                      weights_path=None):
+def get_inception_resnet_v1(input_shape=(160, 160, 3),
+                            classes=512,
+                            dropout_keep_prob=0.8,
+                            weights_path=None):
     inputs = Input(shape=input_shape)
     x = conv2d_bn(inputs, 32, 3, strides=2, padding='valid', name='Conv2d_1a_3x3')
     x = conv2d_bn(x, 32, 3, padding='valid', name='Conv2d_2a_3x3')
@@ -129,7 +131,7 @@ def InceptionResNetV1(input_shape=(160, 160, 3),
                                     block_idx=block_idx)
 
     # Mixed 6a (Reduction-A block):
-    channel_axis = 1 if K.image_data_format() == 'channels_first' else 3
+    channel_axis = 1 if k.image_data_format() == 'channels_first' else 3
     name_fmt = partial(_generate_layer_name, prefix='Mixed_6a')
     branch_0 = conv2d_bn(x,
                          384,
